@@ -1,0 +1,485 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>Bimoli Soundboard</title>
+    <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+            min-height: 100vh;
+            padding: 10px;
+            user-select: none;
+            color: white;
+        }
+        .container { max-width: 500px; margin: 0 auto; }
+        .header { text-align: center; padding: 10px 0; }
+        .header h1 { font-size: 20px; text-shadow: 2px 2px 4px rgba(0,0,0,0.5); }
+        .header .subtitle { font-size: 10px; color: #a8b2d1; }
+        
+        .status { 
+            text-align: center; padding: 6px; margin: 5px 0; border-radius: 20px; 
+            font-size: 11px; background: rgba(255,255,255,0.1); 
+        }
+        .connected { color: #00ff00; }
+        .disconnected { color: #ff4444; }
+        
+        .volume-bar { 
+            background: rgba(255,255,255,0.08); border-radius: 15px; 
+            padding: 12px 15px; margin: 8px 0; border: 1px solid rgba(255,255,255,0.1);
+        }
+        .volume-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+        .volume-label { font-size: 12px; font-weight: bold; }
+        .volume-value { font-size: 14px; font-weight: bold; color: #e94560; }
+        .volume-presets { display: flex; gap: 6px; margin-bottom: 8px; }
+        .volume-preset {
+            flex: 1; padding: 6px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05); color: white; cursor: pointer; font-size: 10px;
+            text-align: center; transition: all 0.2s;
+        }
+        .volume-preset.active { background: #e94560; border-color: #e94560; font-weight: bold; }
+        .volume-slider-container { display: flex; align-items: center; gap: 10px; }
+        .volume-icon { font-size: 20px; min-width: 24px; }
+        input[type="range"] {
+            -webkit-appearance: none; width: 100%; height: 8px;
+            background: linear-gradient(to right, #e94560 75%, rgba(255,255,255,0.2) 75%);
+            border-radius: 4px; outline: none;
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none; width: 26px; height: 26px;
+            background: white; border-radius: 50%; cursor: pointer;
+            box-shadow: 0 2px 8px rgba(233,69,96,0.5); border: 3px solid #e94560;
+        }
+        
+        .kategori-container { 
+            display: flex; gap: 6px; overflow-x: auto; padding: 8px 0; 
+            scrollbar-width: none; -ms-overflow-style: none; 
+        }
+        .kategori-container::-webkit-scrollbar { display: none; }
+        .btn-kategori {
+            padding: 6px 14px; border-radius: 20px; border: 2px solid rgba(255,255,255,0.2);
+            background: rgba(255,255,255,0.05); color: white; cursor: pointer;
+            white-space: nowrap; font-size: 12px; transition: all 0.3s;
+        }
+        .btn-kategori.aktif { background: #e94560; border-color: #e94560; font-weight: bold; }
+        
+        .sound-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 8px 0; }
+        .sound-card {
+            background: rgba(255,255,255,0.08); border-radius: 12px; padding: 15px 10px;
+            cursor: pointer; transition: all 0.15s ease; position: relative; text-align: center;
+            border: 1px solid rgba(255,255,255,0.1); min-height: 85px;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            overflow: hidden;
+        }
+        .sound-card:active { 
+            transform: scale(0.95); background: #e94560; border-color: #e94560;
+            box-shadow: 0 0 20px rgba(233,69,96,0.6); 
+        }
+        .sound-card.playing {
+            background: #e94560; border-color: #e94560;
+            animation: pulse 0.3s ease;
+        }
+        @keyframes pulse {
+            0%, 100% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+        }
+        .sound-emoji { font-size: 30px; margin-bottom: 4px; }
+        .sound-name { font-weight: bold; font-size: 12px; margin-bottom: 2px; word-break: break-word; }
+        .sound-info { font-size: 9px; color: #a8b2d1; }
+        .badge-kategori { 
+            position: absolute; top: 5px; right: 5px; background: rgba(0,0,0,0.3); 
+            padding: 2px 6px; border-radius: 8px; font-size: 8px; 
+        }
+        .playing-badge {
+            position: absolute; top: 5px; left: 5px; background: #00ff00;
+            color: black; padding: 2px 6px; border-radius: 8px; font-size: 8px;
+            font-weight: bold; animation: blink 0.5s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+        
+        .controls { 
+            background: rgba(255,255,255,0.05); border-radius: 12px; 
+            padding: 12px; margin: 8px 0; border: 1px solid rgba(255,255,255,0.1); 
+        }
+        .btn-stop {
+            width: 100%; padding: 12px; background: #e94560; color: white; border: none;
+            border-radius: 10px; cursor: pointer; font-size: 15px; font-weight: bold;
+            box-shadow: 0 4px 15px rgba(233,69,96,0.3);
+        }
+        .btn-stop:active { transform: scale(0.98); }
+        
+        .footer { text-align: center; padding: 10px; font-size: 9px; color: #a8b2d1; }
+        
+        .toast {
+            position: fixed; top: 20px; left: 50%; transform: translateX(-50%);
+            background: rgba(233,69,96,0.95); color: white; padding: 10px 20px;
+            border-radius: 20px; font-size: 13px; z-index: 1000;
+            animation: slideDown 0.3s ease; white-space: nowrap;
+            pointer-events: none;
+        }
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+            to { opacity: 1; transform: translateX(-50%) translateY(0); }
+        }
+        
+        .ripple {
+            position: absolute; border-radius: 50%;
+            background: rgba(255,255,255,0.4); transform: scale(0);
+            animation: ripple 0.6s linear; pointer-events: none;
+        }
+        @keyframes ripple {
+            to { transform: scale(4); opacity: 0; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🎵 Bimoli Soundboard</h1>
+            <div class="subtitle">Professional Gaming Edition v1.0</div>
+        </div>
+        
+        <div class="status" id="status">
+            <span class="disconnected">🔴 Menghubungkan...</span>
+        </div>
+        
+        <div class="volume-bar">
+            <div class="volume-header">
+                <span class="volume-label">🔊 Volume Soundboard</span>
+                <span class="volume-value" id="volumeValue">75%</span>
+            </div>
+            <div class="volume-presets">
+                <button class="volume-preset" onclick="setVolumePreset(0.25)" data-vol="0.25">25%</button>
+                <button class="volume-preset" onclick="setVolumePreset(0.5)" data-vol="0.5">50%</button>
+                <button class="volume-preset active" onclick="setVolumePreset(0.75)" data-vol="0.75">75%</button>
+                <button class="volume-preset" onclick="setVolumePreset(1.0)" data-vol="1.0">100%</button>
+            </div>
+            <div class="volume-slider-container">
+                <span class="volume-icon" id="volumeIcon">🔊</span>
+                <input type="range" id="volumeSlider" min="0" max="100" value="75" 
+                       oninput="updateVolumeUI(this.value)" 
+                       onchange="setVolume(this.value)">
+            </div>
+        </div>
+        
+        <div class="kategori-container" id="kategoriContainer">
+            <button class="btn-kategori aktif" onclick="filterKategori('semua')">🎯 Semua</button>
+        </div>
+        
+        <div class="sound-grid" id="soundGrid">
+            <div style="grid-column: span 2; text-align: center; padding: 40px; color: #a8b2d1;">
+                <div style="font-size: 50px;">📭</div>
+                <div style="margin-top: 10px;">Menunggu koneksi...</div>
+                <div style="font-size: 10px;">Pastikan server sudah berjalan</div>
+            </div>
+        </div>
+        
+        <div class="controls">
+            <button class="btn-stop" onclick="stopAll()">⏹️ STOP SEMUA SUARA</button>
+        </div>
+        
+        <div class="footer">
+            Bimoli Soundboard v1.0 | Kontrol dari HP | PC yang memainkan suara
+        </div>
+    </div>
+    
+    <div id="toastContainer"></div>
+    
+    <script>
+        // ===== KONEKSI =====
+        const socket = io();
+        let semuaSuara = [];
+        let kategoriAktif = 'semua';
+        let volumeGlobal = 0.75;
+        let reconnectAttempts = 0;
+        
+        // ===== WEBSOCKET EVENTS =====
+        socket.on('connect', () => {
+            console.log('✅ Terhubung ke server');
+            reconnectAttempts = 0;
+            document.getElementById('status').innerHTML = 
+                '<span class="connected">🟢 Terhubung</span>';
+            socket.emit('get_sounds');
+        });
+        
+        socket.on('disconnect', () => {
+            console.log('🔴 Terputus dari server');
+            document.getElementById('status').innerHTML = 
+                '<span class="disconnected">🔴 Terputus - Mencoba menghubungkan...</span>';
+            
+            reconnectAttempts++;
+            if (reconnectAttempts > 5) {
+                document.getElementById('status').innerHTML = 
+                    '<span class="disconnected">🔴 Gagal terhubung - Cek server PC</span>';
+            }
+        });
+        
+        socket.on('connect_error', () => {
+            console.log('⚠️ Gagal koneksi');
+            document.getElementById('status').innerHTML = 
+                '<span class="disconnected">🔴 Gagal koneksi - Server mungkin belum jalan</span>';
+        });
+        
+        socket.on('sounds_list', (data) => {
+            if (data.status === 'ok') {
+                semuaSuara = data.suara;
+                updateKategori(data.kategori);
+                renderSuara();
+                if (data.volume) {
+                    volumeGlobal = data.volume;
+                    updateVolumeUI(volumeGlobal * 100);
+                }
+            }
+        });
+        
+        socket.on('play_response', (data) => {
+            if (data.status === 'ok') {
+                showToast(`🔊 ${data.nama_suara} (${Math.round(data.volume*100)}%)`);
+                highlightCard(data.nama_file);
+            } else {
+                showToast('❌ Gagal memainkan suara');
+            }
+        });
+        
+        socket.on('stop_response', (data) => {
+            showToast('⏹️ Semua suara dihentikan');
+            clearHighlights();
+        });
+        
+        socket.on('volume_changed', (data) => {
+            if (data.status === 'ok') {
+                volumeGlobal = data.volume;
+                updateVolumeUI(data.volume * 100);
+            }
+        });
+        
+        // ===== FUNGSI VOLUME =====
+        function updateVolumeUI(value) {
+            value = parseInt(value);
+            document.getElementById('volumeSlider').value = value;
+            document.getElementById('volumeValue').textContent = value + '%';
+            
+            // Update icon
+            const icon = document.getElementById('volumeIcon');
+            if (value == 0) icon.textContent = '🔇';
+            else if (value < 33) icon.textContent = '🔈';
+            else if (value < 66) icon.textContent = '🔉';
+            else icon.textContent = '🔊';
+            
+            // Update slider color
+            const slider = document.getElementById('volumeSlider');
+            slider.style.background = `linear-gradient(to right, #e94560 0%, #e94560 ${value}%, rgba(255,255,255,0.2) ${value}%)`;
+            
+            // Update preset buttons
+            const presetValue = value / 100;
+            document.querySelectorAll('.volume-preset').forEach(btn => {
+                btn.classList.remove('active');
+                if (Math.abs(parseFloat(btn.dataset.vol) - presetValue) < 0.01) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+        
+        function setVolume(value) {
+            const volume = value / 100;
+            volumeGlobal = volume;
+            socket.emit('set_volume', { volume: volume });
+            updateVolumeUI(value);
+        }
+        
+        function setVolumePreset(volume) {
+            volumeGlobal = volume;
+            updateVolumeUI(volume * 100);
+            socket.emit('set_volume', { volume: volume });
+        }
+        
+        // ===== FUNGSI KATEGORI =====
+        function updateKategori(kategori) {
+            const container = document.getElementById('kategoriContainer');
+            container.innerHTML = '<button class="btn-kategori aktif" onclick="filterKategori(\'semua\')">🎯 Semua</button>';
+            
+            if (kategori && kategori.length > 0) {
+                kategori.forEach(kat => {
+                    container.innerHTML += `
+                        <button class="btn-kategori" onclick="filterKategori('${kat}')">${kat}</button>
+                    `;
+                });
+            }
+        }
+        
+        function filterKategori(kategori) {
+            kategoriAktif = kategori;
+            
+            document.querySelectorAll('.btn-kategori').forEach(btn => {
+                btn.classList.remove('aktif');
+                if (
+                    (kategori === 'semua' && btn.textContent.includes('Semua')) ||
+                    btn.textContent.trim() === kategori
+                ) {
+                    btn.classList.add('aktif');
+                }
+            });
+            
+            renderSuara();
+        }
+        
+        // ===== FUNGSI RENDER =====
+        function renderSuara() {
+            const grid = document.getElementById('soundGrid');
+            grid.innerHTML = '';
+            
+            const difilter = kategoriAktif === 'semua' 
+                ? semuaSuara 
+                : semuaSuara.filter(s => s.kategori === kategoriAktif);
+            
+            if (difilter.length === 0) {
+                grid.innerHTML = `
+                    <div style="grid-column: span 2; text-align: center; padding: 40px; color: #a8b2d1;">
+                        <div style="font-size: 50px;">📭</div>
+                        <div style="margin-top: 10px;">Belum ada suara</div>
+                        <div style="font-size: 10px;">Tambahkan lewat Bimoli Manager</div>
+                    </div>
+                `;
+                return;
+            }
+            
+            // Urutkan: yang sering dipake di atas
+            difilter.sort((a, b) => (b.jumlah_main || 0) - (a.jumlah_main || 0));
+            
+            difilter.forEach(suara => {
+                const card = document.createElement('div');
+                card.className = 'sound-card';
+                card.id = 'card_' + suara.nama_file.replace(/[^a-zA-Z0-9]/g, '_');
+                card.addEventListener('click', function(e) {
+                    playSound(suara.nama_file, this, e);
+                });
+                
+                // Emoji berdasarkan kategori
+                const emojiMap = {
+                    'Bimoli': '🎭',
+                    'Gaming': '🎮',
+                    'Meme': '😂',
+                    'Efek': '💥',
+                    'Lainnya': '🔊'
+                };
+                const emoji = emojiMap[suara.kategori] || '🎵';
+                
+                // Play count
+                const playCount = suara.jumlah_main || 0;
+                const playText = playCount > 0 ? `▶️ ${playCount}x` : 'Baru';
+                
+                card.innerHTML = `
+                    <span class="badge-kategori">${suara.kategori}</span>
+                    <div class="sound-emoji">${emoji}</div>
+                    <div class="sound-name">${suara.nama}</div>
+                    <div class="sound-info">${playText}</div>
+                `;
+                
+                // Kalo file hilang, tandain
+                if (suara.file_hilang) {
+                    card.style.opacity = '0.5';
+                    card.title = 'File tidak ditemukan';
+                }
+                
+                grid.appendChild(card);
+            });
+        }
+        
+        // ===== FUNGSI PLAY =====
+        function playSound(namaFile, cardElement, event) {
+            // Efek ripple
+            if (cardElement && event) {
+                const ripple = document.createElement('span');
+                ripple.className = 'ripple';
+                const rect = cardElement.getBoundingClientRect();
+                const size = Math.max(rect.width, rect.height);
+                ripple.style.width = ripple.style.height = size + 'px';
+                ripple.style.left = (event.clientX || event.touches[0].clientX) - rect.left - size/2 + 'px';
+                ripple.style.top = (event.clientY || event.touches[0].clientY) - rect.top - size/2 + 'px';
+                cardElement.appendChild(ripple);
+                setTimeout(() => ripple.remove(), 600);
+            }
+            
+            // Kirim perintah play
+            socket.emit('play_sound', {
+                nama_file: namaFile,
+                volume: volumeGlobal
+            });
+        }
+        
+        function stopAll() {
+            socket.emit('stop_all');
+        }
+        
+        // ===== FUNGSI HIGHLIGHT =====
+        function highlightCard(namaFile) {
+            clearHighlights();
+            
+            const cardId = 'card_' + namaFile.replace(/[^a-zA-Z0-9]/g, '_');
+            const card = document.getElementById(cardId);
+            
+            if (card) {
+                card.classList.add('playing');
+                
+                const badge = document.createElement('span');
+                badge.className = 'playing-badge';
+                badge.textContent = '▶️ PLAY';
+                card.appendChild(badge);
+                
+                setTimeout(() => {
+                    card.classList.remove('playing');
+                    if (badge.parentNode) badge.remove();
+                }, 2000);
+            }
+        }
+        
+        function clearHighlights() {
+            document.querySelectorAll('.sound-card.playing').forEach(card => {
+                card.classList.remove('playing');
+            });
+            document.querySelectorAll('.playing-badge').forEach(badge => {
+                badge.remove();
+            });
+        }
+        
+        // ===== FUNGSI TOAST =====
+        function showToast(pesan) {
+            const container = document.getElementById('toastContainer');
+            
+            // Hapus toast sebelumnya
+            container.innerHTML = '';
+            
+            const toast = document.createElement('div');
+            toast.className = 'toast';
+            toast.textContent = pesan;
+            container.appendChild(toast);
+            
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                toast.style.transition = 'opacity 0.3s';
+                setTimeout(() => toast.remove(), 300);
+            }, 1500);
+        }
+        
+        // ===== INIT =====
+        updateVolumeUI(75);
+        
+        // Reconnect kalo keputus
+        setInterval(() => {
+            if (!socket.connected) {
+                socket.connect();
+            }
+        }, 5000);
+        
+        console.log('🎵 Bimoli Soundboard UI Ready!');
+    </script>
+</body>
+</html>

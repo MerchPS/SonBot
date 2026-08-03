@@ -1,0 +1,35 @@
+{
+  "suara": [
+    {
+      "id": 1,
+      "nama": "Fahh",
+      "nama_file": "bimoli_fahh_20260803_181007.mp3",
+      "kategori": "Bimoli",
+      "ditambahkan": "2026-08-03 18:10:22",
+      "jumlah_main": 83,
+      "ukuran_kb": 142.7861328125
+    },
+    {
+      "id": 2,
+      "nama": "Ketawa",
+      "nama_file": "bimoli_ketawa_20260803_185038.mp3",
+      "kategori": "Bimoli",
+      "ditambahkan": "2026-08-03 18:50:42",
+      "jumlah_main": 6,
+      "ukuran_kb": 141.7939453125,
+      "sumber": "youtube"
+    }
+  ],
+  "kategori": [
+    "Bimoli",
+    "Gaming",
+    "Meme",
+    "Efek",
+    "Lainnya"
+  ],
+  "pengaturan": {
+    "volume": 1.0,
+    "auto_deteksi": true,
+    "port_server": 5000
+  }
+}
