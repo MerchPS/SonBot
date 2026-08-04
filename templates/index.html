@@ -7,87 +7,259 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <title>Bimoli Soundboard + Live</title>
     <script src="https://cdn.socket.io/4.5.4/socket.io.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg: #0a0d15;
+            --surface: #131826;
+            --surface-2: #1b2233;
+            --line: rgba(255,255,255,0.08);
+            --gold: #ffb400;
+            --gold-dim: #7a5c12;
+            --coral: #ff5d5d;
+            --teal: #2fd6ac;
+            --text: #f2efe6;
+            --text-dim: #8b93a8;
+            --font-display: 'Sora', system-ui, sans-serif;
+            --font-body: 'Inter', system-ui, sans-serif;
+            --font-mono: ui-monospace, 'SF Mono', Menlo, monospace;
+        }
+
         * { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
+
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-            background: #0a0a1a;
+            font-family: var(--font-body);
+            background: var(--bg);
             min-height: 100vh;
             user-select: none;
-            color: white;
+            color: var(--text);
             display: flex;
             flex-direction: column;
             height: 100vh;
             overflow: hidden;
         }
-        
+
+        /* ===== SOUNDBOARD ===== */
         .soundboard-section {
-            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
-            padding: 6px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            padding: 10px 10px 6px;
             flex: 3;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            max-height: 38vh;
+            max-height: 40vh;
         }
-        
-        .header { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px; }
-        .header h1 { font-size: 14px; }
-        .status-mini { font-size: 10px; padding: 3px 8px; border-radius: 10px; background: rgba(255,255,255,0.1); }
-        
-        .volume-bar { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 5px 8px; margin: 2px 0; }
-        .volume-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
-        .volume-label { font-size: 10px; }
-        .volume-value { font-size: 11px; color: #e94560; font-weight: bold; }
-        .volume-presets { display: flex; gap: 3px; margin-bottom: 3px; }
-        .volume-preset { flex: 1; padding: 3px; border-radius: 5px; border: 1px solid rgba(255,255,255,0.2); background: rgba(255,255,255,0.05); color: white; cursor: pointer; font-size: 9px; text-align: center; }
-        .volume-preset.active { background: #e94560; }
-        .volume-slider-container { display: flex; align-items: center; gap: 5px; }
-        input[type="range"] { -webkit-appearance: none; width: 100%; height: 5px; background: #e94560; border-radius: 3px; outline: none; }
-        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: white; border-radius: 50%; border: 2px solid #e94560; }
-        
-        .sound-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 2px 0; flex: 1; overflow-y: auto; }
-        .sound-card { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 4px; cursor: pointer; text-align: center; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 45px; transition: all 0.15s; }
-        .sound-card:active { transform: scale(0.95); background: #e94560; }
-        .sound-emoji { font-size: 18px; margin-bottom: 1px; }
-        .sound-name { font-weight: bold; font-size: 9px; word-break: break-word; }
-        .sound-info { font-size: 7px; color: #a8b2d1; }
-        
-        .controls-row { display: flex; gap: 4px; margin-top: 2px; }
-        .btn { flex: 1; padding: 6px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
-        .btn-stop { background: #e94560; color: white; }
-        .btn-chat { background: #6441a5; color: white; }
-        .btn:active { transform: scale(0.98); }
-        
+
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 2px 2px 8px; }
+        .header h1 {
+            font-family: var(--font-display);
+            font-size: 15px;
+            font-weight: 800;
+            letter-spacing: 0.3px;
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+        .header h1::before {
+            content: '';
+            width: 8px; height: 8px;
+            border-radius: 50%;
+            background: var(--gold);
+            box-shadow: 0 0 8px var(--gold);
+            flex-shrink: 0;
+        }
+        .status-mini {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            color: var(--text-dim);
+        }
+        .status-mini.on { color: var(--teal); border-color: rgba(47,214,172,0.35); }
+
+        /* volume: styled like a studio VU meter */
+        .volume-bar {
+            background: var(--surface-2);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 8px 10px;
+            margin-bottom: 6px;
+        }
+        .volume-header { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 5px; }
+        .volume-label { font-size: 10px; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.5px; }
+        .volume-value { font-family: var(--font-mono); font-size: 13px; color: var(--gold); font-weight: 700; }
+        .volume-presets { display: flex; gap: 4px; margin-bottom: 6px; }
+        .volume-preset {
+            flex: 1; padding: 4px; border-radius: 6px;
+            border: 1px solid var(--line);
+            background: var(--bg);
+            color: var(--text-dim);
+            cursor: pointer;
+            font-family: var(--font-mono);
+            font-size: 9px; text-align: center;
+            transition: background 0.15s, color 0.15s, border-color 0.15s;
+        }
+        .volume-preset.active { background: var(--gold); color: #1a1300; border-color: var(--gold); font-weight: 700; }
+        .volume-slider-container { display: flex; align-items: center; gap: 8px; }
+        .volume-slider-container span { font-size: 12px; opacity: 0.7; }
+        input[type="range"] {
+            -webkit-appearance: none;
+            width: 100%; height: 6px;
+            border-radius: 4px;
+            outline: none;
+            background: linear-gradient(90deg, var(--gold) 0%, var(--gold) var(--fill, 75%), var(--bg) var(--fill, 75%), var(--bg) 100%);
+        }
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px; height: 16px;
+            background: var(--text);
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            cursor: pointer;
+        }
+        input[type="range"]::-moz-range-thumb {
+            width: 16px; height: 16px;
+            background: var(--text);
+            border-radius: 50%;
+            border: 2px solid var(--gold);
+            cursor: pointer;
+        }
+
+        .sound-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(84px, 1fr));
+            gap: 6px;
+            margin: 2px 0;
+            flex: 1;
+            overflow-y: auto;
+        }
+        .sound-card {
+            background: var(--surface-2);
+            border-radius: 9px;
+            padding: 8px 4px;
+            cursor: pointer;
+            text-align: center;
+            border: 1px solid var(--line);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 52px;
+            transition: transform 0.12s, background 0.12s, border-color 0.12s;
+        }
+        .sound-card:hover { border-color: rgba(255,180,0,0.4); }
+        .sound-card:active { transform: scale(0.94); background: var(--gold); }
+        .sound-card:active .sound-name,
+        .sound-card:active .sound-info { color: #1a1300; }
+        .sound-emoji { font-size: 19px; margin-bottom: 2px; }
+        .sound-name { font-weight: 600; font-size: 9.5px; word-break: break-word; }
+        .sound-info { font-family: var(--font-mono); font-size: 7.5px; color: var(--text-dim); margin-top: 1px; }
+        .empty-state { grid-column: 1/-1; text-align: center; padding: 22px 10px; color: var(--text-dim); font-size: 12px; }
+
+        .controls-row { display: flex; gap: 6px; margin-top: 6px; }
+        .btn {
+            flex: 1; padding: 9px; border: none; border-radius: 8px;
+            cursor: pointer; font-family: var(--font-display); font-size: 12px; font-weight: 700;
+            letter-spacing: 0.3px;
+            transition: filter 0.12s, transform 0.08s;
+        }
+        .btn-stop { background: var(--coral); color: #2a0a0a; }
+        .btn-chat { background: transparent; color: var(--teal); border: 1.5px solid var(--teal); }
+        .btn:hover { filter: brightness(1.1); }
+        .btn:active { transform: scale(0.97); }
+
+        /* ===== LIVE CHAT ===== */
         .chat-section {
             flex: 5;
             display: flex;
             flex-direction: column;
-            background: #0d0d1f;
-            border-top: 2px solid #e94560;
+            background: var(--bg);
         }
-        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: rgba(233,69,96,0.15); font-size: 10px; }
-        .chat-iframe-container { flex: 1; position: relative; }
+        .chat-header {
+            display: flex; justify-content: space-between; align-items: center;
+            padding: 7px 12px;
+            background: var(--surface);
+            border-bottom: 1px solid var(--line);
+            font-size: 10.5px;
+        }
+        .chat-header-label { color: var(--text-dim); display: flex; align-items: center; gap: 6px; }
+        #liveStatus { color: var(--text); font-weight: 600; }
+        .live-badge {
+            display: none;
+            align-items: center; gap: 4px;
+            color: var(--teal);
+            font-family: var(--font-mono);
+            font-weight: 700;
+            font-size: 10px;
+        }
+        .live-badge::before {
+            content: '';
+            width: 6px; height: 6px; border-radius: 50%;
+            background: var(--teal);
+            animation: pulse 1.4s ease-in-out infinite;
+        }
+        .retry-btn {
+            font-family: var(--font-mono);
+            font-size: 9px;
+            color: var(--gold);
+            background: transparent;
+            border: 1px solid var(--gold-dim);
+            border-radius: 6px;
+            padding: 3px 8px;
+            cursor: pointer;
+        }
+        .chat-iframe-container { flex: 1; position: relative; background: var(--bg); }
         .chat-iframe-container iframe { width: 100%; height: 100%; border: none; }
-        
-        .toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(233,69,96,0.95); color: white; padding: 8px 16px; border-radius: 16px; font-size: 12px; z-index: 9999; animation: slideDown 0.3s; pointer-events: none; }
-        @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-20px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
-        
+        .chat-placeholder {
+            position: absolute; inset: 0;
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            gap: 10px; text-align: center; color: var(--text-dim); padding: 20px;
+        }
+        .chat-placeholder .icon { font-size: 34px; opacity: 0.8; }
+        .chat-placeholder .title { font-size: 13px; color: var(--text); font-weight: 600; }
+        .chat-placeholder .sub { font-size: 11px; }
+        .spinner {
+            width: 22px; height: 22px;
+            border: 2.5px solid var(--surface-2);
+            border-top-color: var(--gold);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        .toast {
+            position: fixed; top: 10px; left: 50%; transform: translateX(-50%);
+            background: var(--surface-2);
+            border: 1px solid var(--gold-dim);
+            color: var(--text);
+            padding: 8px 16px; border-radius: 20px; font-size: 12px;
+            z-index: 9999; animation: slideDown 0.3s; pointer-events: none;
+            font-family: var(--font-mono);
+        }
+
+        @keyframes slideDown { from { opacity: 0; transform: translateX(-50%) translateY(-16px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+        @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.3; } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #e94560; border-radius: 3px; }
-        
-        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+        ::-webkit-scrollbar-thumb { background: var(--gold-dim); border-radius: 3px; }
+
+        @media (max-width: 340px) {
+            .sound-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); }
+        }
     </style>
 </head>
 <body>
     <!-- SOUNDBOARD -->
     <div class="soundboard-section">
-        <div class="header"><h1>🎵 Bimoli Soundboard</h1><span class="status-mini" id="status">🟢</span></div>
-        
+        <div class="header"><h1>Bimoli Soundboard</h1><span class="status-mini" id="status">connecting</span></div>
+
         <div class="volume-bar">
-            <div class="volume-header"><span class="volume-label">🔊 Volume</span><span class="volume-value" id="volumeValue">75%</span></div>
+            <div class="volume-header"><span class="volume-label">Volume</span><span class="volume-value" id="volumeValue">75%</span></div>
             <div class="volume-presets">
                 <button class="volume-preset" onclick="setVol(0.25)">25%</button>
                 <button class="volume-preset" onclick="setVol(0.5)">50%</button>
@@ -95,161 +267,198 @@
                 <button class="volume-preset" onclick="setVol(1.0)">100%</button>
             </div>
             <div class="volume-slider-container">
-                <span>🔊</span>
-                <input type="range" id="volSlider" min="0" max="100" value="75" oninput="updVol(this.value)" onchange="setVol2(this.value)">
+                <span>&#128266;</span>
+                <input type="range" id="volSlider" min="0" max="100" value="75" oninput="updVol(this.value)" onchange="setVol2(this.value)" aria-label="Volume">
             </div>
         </div>
-        
+
         <div class="sound-grid" id="soundGrid">
-            <div style="grid-column:span 3;text-align:center;padding:20px;color:#a8b2d1;font-size:12px;">📭 Loading...</div>
+            <div class="empty-state">Memuat daftar suara...</div>
         </div>
-        
+
         <div class="controls-row">
-            <button class="btn btn-stop" onclick="stopAll()">⏹️ STOP</button>
-            <button class="btn btn-chat" onclick="loadLiveChat()">💬 CEK LIVE</button>
+            <button class="btn btn-stop" onclick="stopAll()">Stop</button>
+            <button class="btn btn-chat" onclick="loadLiveChat()">Cek Live</button>
         </div>
     </div>
-    
+
     <!-- LIVE CHAT -->
     <div class="chat-section">
         <div class="chat-header">
-            <span>💬 Live Chat - <span id="liveStatus">Klik CEK LIVE</span></span>
-            <span id="liveBadge" style="display:none;color:#0f0;animation:blink 1s infinite;font-weight:bold;">🔴 LIVE</span>
+            <span class="chat-header-label">Live chat &middot; <span id="liveStatus">klik Cek Live</span></span>
+            <span class="live-badge" id="liveBadge">LIVE</span>
         </div>
         <div class="chat-iframe-container" id="chatContainer">
-            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#a8b2d1;">
-                <div style="font-size:40px;">💬</div>
-                <div style="font-size:12px;margin-top:8px;">Klik tombol CEK LIVE di atas</div>
-                <div style="font-size:10px;color:#666;">Live chat akan muncul disini</div>
+            <div class="chat-placeholder">
+                <div class="icon">&#128172;</div>
+                <div class="title">Belum ada live chat dimuat</div>
+                <div class="sub">Tekan tombol "Cek Live" di atas</div>
             </div>
         </div>
     </div>
-    
+
     <div id="toastContainer"></div>
-    
+
     <script>
+        // ===== CONFIG =====
+        const CHANNEL_HANDLE = '@TheMoiLee';
+
         // ===== SOUNDBOARD =====
         const socket = io();
         let semuaSuara = [];
         let vol = 0.75;
         let liveVideoId = null;
-        
-        socket.on('connect', () => { document.getElementById('status').textContent = '🟢'; socket.emit('get_sounds'); });
-        socket.on('disconnect', () => { document.getElementById('status').textContent = '🔴'; });
+        let liveCheckInFlight = false;
+
+        socket.on('connect', () => { setStatus(true); socket.emit('get_sounds'); });
+        socket.on('disconnect', () => { setStatus(false); });
         socket.on('sounds_list', (data) => {
-            if (data.status === 'ok') { semuaSuara = data.suara; renderSuara(); if (data.volume) { vol = data.volume; updVol(vol * 100); } }
+            if (data.status === 'ok') {
+                semuaSuara = data.suara;
+                renderSuara();
+                if (data.volume) { vol = data.volume; updVol(vol * 100); }
+            }
         });
-        socket.on('play_response', (data) => { if (data.status === 'ok') toast('🔊 ' + data.nama_suara); });
-        
-        function updVol(v) { v = parseInt(v); document.getElementById('volSlider').value = v; document.getElementById('volumeValue').textContent = v + '%'; }
+        socket.on('play_response', (data) => { if (data.status === 'ok') toast('▶ ' + data.nama_suara); });
+
+        // Optional: if the backend implements a 'check_live' handler (recommended —
+        // server-side lookup avoids CORS limits entirely), use it. Falls back to the
+        // client-side oEmbed check below if there's no response.
+        socket.on('live_status', (data) => {
+            if (data && data.videoId) applyLiveState(data.videoId);
+        });
+
+        function setStatus(ok) {
+            const el = document.getElementById('status');
+            el.textContent = ok ? 'online' : 'offline';
+            el.classList.toggle('on', ok);
+        }
+
+        function updVol(v) {
+            v = parseInt(v);
+            document.getElementById('volSlider').style.setProperty('--fill', v + '%');
+            document.getElementById('volSlider').value = v;
+            document.getElementById('volumeValue').textContent = v + '%';
+        }
         function setVol2(v) { vol = v / 100; socket.emit('set_volume', { volume: vol }); updVol(v); }
-        function setVol(v) { vol = v; updVol(v * 100); socket.emit('set_volume', { volume: v }); document.querySelectorAll('.volume-preset').forEach(b => b.classList.remove('active')); document.querySelectorAll('.volume-preset').forEach(b => { if (Math.abs(parseFloat(b.textContent)/100 - v) < 0.01) b.classList.add('active'); }); }
-        
+        function setVol(v) {
+            vol = v; updVol(v * 100);
+            socket.emit('set_volume', { volume: v });
+            document.querySelectorAll('.volume-preset').forEach(b => {
+                b.classList.toggle('active', Math.abs(parseFloat(b.textContent) / 100 - v) < 0.01);
+            });
+        }
+
         function renderSuara() {
-            const grid = document.getElementById('soundGrid'); grid.innerHTML = '';
-            if (semuaSuara.length === 0) { grid.innerHTML = '<div style="grid-column:span 3;text-align:center;padding:20px;color:#a8b2d1;font-size:12px;">📭 Belum ada suara</div>'; return; }
+            const grid = document.getElementById('soundGrid');
+            grid.innerHTML = '';
+            if (semuaSuara.length === 0) {
+                grid.innerHTML = '<div class="empty-state">Belum ada suara</div>';
+                return;
+            }
             const em = { Bimoli: '🎭', Gaming: '🎮', Meme: '😂', Efek: '💥' };
             semuaSuara.sort((a, b) => (b.jumlah_main || 0) - (a.jumlah_main || 0));
             semuaSuara.forEach(s => {
-                const card = document.createElement('div'); card.className = 'sound-card';
+                const card = document.createElement('div');
+                card.className = 'sound-card';
                 card.onclick = () => socket.emit('play_sound', { nama_file: s.nama_file, volume: vol });
                 card.innerHTML = `<div class="sound-emoji">${em[s.kategori] || '🔊'}</div><div class="sound-name">${s.nama}</div><div class="sound-info">${s.jumlah_main || 0}x</div>`;
                 grid.appendChild(card);
             });
         }
-        
-        function stopAll() { socket.emit('stop_all'); toast('⏹️ Stopped!'); }
-        function toast(m) { const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 1500); }
-        
+
+        function stopAll() { socket.emit('stop_all'); toast('■ Stopped'); }
+        function toast(m) {
+            const c = document.getElementById('toastContainer');
+            const t = document.createElement('div');
+            t.className = 'toast';
+            t.textContent = m;
+            c.appendChild(t);
+            setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 1500);
+        }
+
         // ===== LIVE CHAT =====
+        // Uses YouTube's oEmbed endpoint only — it sends proper CORS headers so it
+        // works from the browser, unlike fetching a raw youtube.com page (which is
+        // blocked by CORS and was the dead code in the previous version).
         async function getLiveVideoId() {
             try {
-                // Pake YouTube's oEmbed API (gak perlu API key)
-                const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/@TheMoiLee/live&format=json`;
-                const response = await fetch(url);
-                const data = await response.json();
-                
-                // Extract video ID dari html
-                const match = data.html.match(/embed\/([a-zA-Z0-9_-]+)/);
-                if (match) return match[1];
-                
-                // Fallback: coba fetch halaman channel
-                const pageResponse = await fetch('https://www.youtube.com/@TheMoiLee');
-                const html = await pageResponse.text();
-                
-                // Cari live video ID
-                const patterns = [
-                    /"videoId":"([^"]+)"[^}]+"liveBadge"/,
-                    /"videoId":"([^"]+)"[^}]+"isLive":true/,
-                    /"label":"LIVE"[^}]+"videoId":"([^"]+)"/,
-                    /watch\?v=([a-zA-Z0-9_-]+).*LIVE/,
-                    /"url":"\/watch\?v=([a-zA-Z0-9_-]+)"[^}]+"badge":{"liveBadge":/
-                ];
-                
-                for (const pattern of patterns) {
-                    const match = html.match(pattern);
-                    if (match) return match[1];
-                }
-                
-                return null;
+                const url = `https://www.youtube.com/oembed?url=${encodeURIComponent('https://www.youtube.com/' + CHANNEL_HANDLE + '/live')}&format=json`;
+                const res = await fetch(url);
+                if (!res.ok) return null;
+                const data = await res.json();
+                const match = data.html && data.html.match(/embed\/([a-zA-Z0-9_-]+)/);
+                return match ? match[1] : null;
             } catch (e) {
                 return null;
             }
         }
-        
+
+        function setChatPlaceholder(icon, title, sub, showRetry) {
+            document.getElementById('chatContainer').innerHTML = `
+                <div class="chat-placeholder">
+                    <div class="icon">${icon}</div>
+                    <div class="title">${title}</div>
+                    <div class="sub">${sub}</div>
+                    ${showRetry ? '<button class="retry-btn" onclick="loadLiveChat()">Coba lagi</button>' : ''}
+                </div>`;
+        }
+
+        function applyLiveState(videoId) {
+            liveVideoId = videoId;
+            document.getElementById('liveStatus').textContent = 'sedang live';
+            document.getElementById('liveBadge').style.display = 'inline-flex';
+
+            // sandbox WITHOUT allow-top-navigation: this is what stops YouTube from
+            // being able to force-redirect the whole page if embed_domain doesn't
+            // match. Worst case on mismatch, the chat box itself shows an error —
+            // the page around it stays put.
+            document.getElementById('chatContainer').innerHTML = `
+                <iframe
+                    src="https://www.youtube.com/live_chat?v=${videoId}&embed_domain=${window.location.hostname}"
+                    sandbox="allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-forms"
+                    allow="autoplay; encrypted-media"
+                    referrerpolicy="strict-origin-when-cross-origin"
+                    loading="lazy">
+                </iframe>`;
+            toast('Live chat dimuat');
+        }
+
         async function loadLiveChat() {
-            const statusEl = document.getElementById('liveStatus');
-            const badgeEl = document.getElementById('liveBadge');
-            const container = document.getElementById('chatContainer');
-            
-            statusEl.textContent = '🔍 Mencari live...';
-            badgeEl.style.display = 'none';
-            
+            if (liveCheckInFlight) return;
+            liveCheckInFlight = true;
+
+            document.getElementById('liveStatus').textContent = 'mencari...';
+            document.getElementById('liveBadge').style.display = 'none';
+            document.getElementById('chatContainer').innerHTML = `
+                <div class="chat-placeholder">
+                    <div class="spinner"></div>
+                    <div class="sub">Mengecek status live...</div>
+                </div>`;
+
+            // Give the backend a chance to answer first (no CORS limits server-side).
+            socket.emit('check_live');
             const videoId = await getLiveVideoId();
-            
+            liveCheckInFlight = false;
+
             if (videoId) {
-                liveVideoId = videoId;
-                statusEl.innerHTML = '<span style="color:#0f0;">🟢 LIVE!</span>';
-                badgeEl.style.display = 'inline';
-                
-                // Embed live chat langsung di iframe
-                container.innerHTML = `
-                    <iframe 
-                        src="https://www.youtube.com/live_chat?v=${videoId}&embed_domain=${window.location.hostname}"
-                        width="100%" 
-                        height="100%" 
-                        frameborder="0"
-                        allow="autoplay; encrypted-media"
-                        allowfullscreen>
-                    </iframe>
-                `;
-                
-                toast('💬 Live chat dimuat!');
+                applyLiveState(videoId);
             } else {
-                statusEl.textContent = '⚪ Tidak live';
-                container.innerHTML = `
-                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#a8b2d1;">
-                        <div style="font-size:40px;">😴</div>
-                        <div style="font-size:12px;margin-top:8px;">TheMoiLee tidak live</div>
-                        <div style="font-size:10px;color:#666;">Cek lagi nanti</div>
-                    </div>
-                `;
-                toast('❌ Tidak ada live');
+                document.getElementById('liveStatus').textContent = 'tidak live';
+                setChatPlaceholder('😴', 'Sedang tidak live', 'Coba cek lagi beberapa saat lagi', true);
             }
         }
-        
+
         // ===== AUTO CHECK EVERY 1 MINUTE =====
         setInterval(async () => {
+            if (liveCheckInFlight) return;
             const videoId = await getLiveVideoId();
-            if (videoId && videoId !== liveVideoId) {
-                document.getElementById('liveBadge').style.display = 'inline';
-                document.getElementById('liveStatus').innerHTML = '<span style="color:#0f0;">🟢 LIVE!</span>';
-                loadLiveChat();
-            }
+            if (videoId && videoId !== liveVideoId) applyLiveState(videoId);
         }, 60000);
-        
+
         // ===== INIT =====
         updVol(75);
+        setStatus(false);
     </script>
 </body>
 </html>
