@@ -22,22 +22,21 @@
             overflow: hidden;
         }
         
-        /* ===== SOUNDBOARD ===== */
         .soundboard-section {
             background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
             padding: 6px;
-            flex: 35;
+            flex: 3;
             display: flex;
             flex-direction: column;
             overflow-y: auto;
-            max-height: 40vh;
+            max-height: 38vh;
         }
         
         .header { display: flex; justify-content: space-between; align-items: center; padding: 2px 6px; }
-        .header h1 { font-size: 15px; }
+        .header h1 { font-size: 14px; }
         .status-mini { font-size: 10px; padding: 3px 8px; border-radius: 10px; background: rgba(255,255,255,0.1); }
         
-        .volume-bar { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 10px; margin: 3px 0; }
+        .volume-bar { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 5px 8px; margin: 2px 0; }
         .volume-header { display: flex; justify-content: space-between; margin-bottom: 2px; }
         .volume-label { font-size: 10px; }
         .volume-value { font-size: 11px; color: #e94560; font-weight: bold; }
@@ -48,22 +47,28 @@
         input[type="range"] { -webkit-appearance: none; width: 100%; height: 5px; background: #e94560; border-radius: 3px; outline: none; }
         input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; width: 20px; height: 20px; background: white; border-radius: 50%; border: 2px solid #e94560; }
         
-        .sound-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 3px 0; flex: 1; overflow-y: auto; }
-        .sound-card { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 8px 4px; cursor: pointer; text-align: center; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 50px; transition: all 0.15s; }
+        .sound-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin: 2px 0; flex: 1; overflow-y: auto; }
+        .sound-card { background: rgba(255,255,255,0.08); border-radius: 8px; padding: 6px 4px; cursor: pointer; text-align: center; border: 1px solid rgba(255,255,255,0.1); display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 45px; transition: all 0.15s; }
         .sound-card:active { transform: scale(0.95); background: #e94560; }
-        .sound-emoji { font-size: 20px; margin-bottom: 2px; }
-        .sound-name { font-weight: bold; font-size: 10px; word-break: break-word; }
-        .sound-info { font-size: 8px; color: #a8b2d1; }
+        .sound-emoji { font-size: 18px; margin-bottom: 1px; }
+        .sound-name { font-weight: bold; font-size: 9px; word-break: break-word; }
+        .sound-info { font-size: 7px; color: #a8b2d1; }
         
-        .controls-row { display: flex; gap: 4px; margin-top: 3px; }
-        .btn-stop { flex: 1; padding: 8px; background: #e94560; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .btn-refresh { flex: 1; padding: 8px; background: #6441a5; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: bold; }
-        .btn-stop:active, .btn-refresh:active { transform: scale(0.98); }
+        .controls-row { display: flex; gap: 4px; margin-top: 2px; }
+        .btn { flex: 1; padding: 6px; border: none; border-radius: 6px; cursor: pointer; font-size: 11px; font-weight: bold; }
+        .btn-stop { background: #e94560; color: white; }
+        .btn-chat { background: #6441a5; color: white; }
+        .btn:active { transform: scale(0.98); }
         
-        /* ===== LIVE CHAT ===== */
-        .chat-section { flex: 65; display: flex; flex-direction: column; background: #0d0d1f; border-top: 2px solid #e94560; }
-        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 5px 10px; background: rgba(233,69,96,0.15); font-size: 11px; }
-        .chat-iframe-container { flex: 1; position: relative; overflow: hidden; }
+        .chat-section {
+            flex: 5;
+            display: flex;
+            flex-direction: column;
+            background: #0d0d1f;
+            border-top: 2px solid #e94560;
+        }
+        .chat-header { display: flex; justify-content: space-between; align-items: center; padding: 4px 10px; background: rgba(233,69,96,0.15); font-size: 10px; }
+        .chat-iframe-container { flex: 1; position: relative; }
         .chat-iframe-container iframe { width: 100%; height: 100%; border: none; }
         
         .toast { position: fixed; top: 10px; left: 50%; transform: translateX(-50%); background: rgba(233,69,96,0.95); color: white; padding: 8px 16px; border-radius: 16px; font-size: 12px; z-index: 9999; animation: slideDown 0.3s; pointer-events: none; }
@@ -72,11 +77,13 @@
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #e94560; border-radius: 3px; }
+        
+        @keyframes blink { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
     </style>
 </head>
 <body>
-    <!-- ===== SOUNDBOARD ===== -->
-    <div class="soundboard-section" id="soundboardSection">
+    <!-- SOUNDBOARD -->
+    <div class="soundboard-section">
         <div class="header"><h1>🎵 Bimoli Soundboard</h1><span class="status-mini" id="status">🟢</span></div>
         
         <div class="volume-bar">
@@ -98,22 +105,22 @@
         </div>
         
         <div class="controls-row">
-            <button class="btn-stop" onclick="stopAll()">⏹️ STOP</button>
-            <button class="btn-refresh" onclick="openLiveChat()">💬 LIVE CHAT</button>
+            <button class="btn btn-stop" onclick="stopAll()">⏹️ STOP</button>
+            <button class="btn btn-chat" onclick="loadLiveChat()">💬 CEK LIVE</button>
         </div>
     </div>
     
-    <!-- ===== LIVE CHAT ===== -->
+    <!-- LIVE CHAT -->
     <div class="chat-section">
         <div class="chat-header">
-            <span>💬 Live Chat - <span id="liveStatus" style="color:#ff0;">Klik tombol 💬 LIVE CHAT</span></span>
-            <button onclick="openLiveChat()" style="background:#e94560;color:white;border:none;padding:3px 8px;border-radius:4px;font-size:10px;cursor:pointer;">🔄 Refresh</button>
+            <span>💬 Live Chat - <span id="liveStatus">Klik CEK LIVE</span></span>
+            <span id="liveBadge" style="display:none;color:#0f0;animation:blink 1s infinite;font-weight:bold;">🔴 LIVE</span>
         </div>
         <div class="chat-iframe-container" id="chatContainer">
-            <div id="chatLoading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#a8b2d1;z-index:10;">
-                <div style="font-size:30px;">💬</div>
-                <div style="font-size:11px;margin-top:5px;">Klik tombol LIVE CHAT di atas</div>
-                <div style="font-size:9px;color:#666;">Bakal buka popup live chat YouTube</div>
+            <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#a8b2d1;">
+                <div style="font-size:40px;">💬</div>
+                <div style="font-size:12px;margin-top:8px;">Klik tombol CEK LIVE di atas</div>
+                <div style="font-size:10px;color:#666;">Live chat akan muncul disini</div>
             </div>
         </div>
     </div>
@@ -125,6 +132,7 @@
         const socket = io();
         let semuaSuara = [];
         let vol = 0.75;
+        let liveVideoId = null;
         
         socket.on('connect', () => { document.getElementById('status').textContent = '🟢'; socket.emit('get_sounds'); });
         socket.on('disconnect', () => { document.getElementById('status').textContent = '🔴'; });
@@ -132,7 +140,6 @@
             if (data.status === 'ok') { semuaSuara = data.suara; renderSuara(); if (data.volume) { vol = data.volume; updVol(vol * 100); } }
         });
         socket.on('play_response', (data) => { if (data.status === 'ok') toast('🔊 ' + data.nama_suara); });
-        socket.on('stop_response', () => toast('⏹️ Stopped!'));
         
         function updVol(v) { v = parseInt(v); document.getElementById('volSlider').value = v; document.getElementById('volumeValue').textContent = v + '%'; }
         function setVol2(v) { vol = v / 100; socket.emit('set_volume', { volume: vol }); updVol(v); }
@@ -151,103 +158,98 @@
             });
         }
         
-        function stopAll() { socket.emit('stop_all'); }
+        function stopAll() { socket.emit('stop_all'); toast('⏹️ Stopped!'); }
         function toast(m) { const c = document.getElementById('toastContainer'); const t = document.createElement('div'); t.className = 'toast'; t.textContent = m; c.appendChild(t); setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 1500); }
         
-        // ===== LIVE CHAT (POPUP) =====
-        const CHANNEL_ID = "UCXuqSBlHAE6Xw-yeJA0Tunw"; // TheMoiLee channel ID
-        
-        async function openLiveChat() {
-            document.getElementById('liveStatus').innerHTML = '<span style="color:#ff0;">🔍 Mencari live...</span>';
-            document.getElementById('chatLoading').innerHTML = '<div style="font-size:30px;">🔍</div><div style="font-size:11px;">Mencari video live...</div>';
-            
+        // ===== LIVE CHAT =====
+        async function getLiveVideoId() {
             try {
-                // Cara 1: Coba embed live chat langsung
-                const liveUrl = `https://www.youtube.com/live_chat?v=LIVE_VIDEO_ID&embed_domain=${window.location.hostname}`;
+                // Pake YouTube's oEmbed API (gak perlu API key)
+                const url = `https://www.youtube.com/oembed?url=https://www.youtube.com/@TheMoiLee/live&format=json`;
+                const response = await fetch(url);
+                const data = await response.json();
                 
-                // Cara 2: Fetch halaman channel buat dapetin video ID
-                const response = await fetch(`https://www.youtube.com/@TheMoiLee`);
-                const html = await response.text();
+                // Extract video ID dari html
+                const match = data.html.match(/embed\/([a-zA-Z0-9_-]+)/);
+                if (match) return match[1];
                 
-                // Cari live video badge
-                let liveVideoId = null;
+                // Fallback: coba fetch halaman channel
+                const pageResponse = await fetch('https://www.youtube.com/@TheMoiLee');
+                const html = await pageResponse.text();
                 
-                // Pattern 1: "videoId":"xxx" + "badge":{"liveBadge"
-                const match1 = html.match(/"videoId":"([^"]+)"[^}]+"badge":\{"liveBadge":/);
-                if (match1) liveVideoId = match1[1];
+                // Cari live video ID
+                const patterns = [
+                    /"videoId":"([^"]+)"[^}]+"liveBadge"/,
+                    /"videoId":"([^"]+)"[^}]+"isLive":true/,
+                    /"label":"LIVE"[^}]+"videoId":"([^"]+)"/,
+                    /watch\?v=([a-zA-Z0-9_-]+).*LIVE/,
+                    /"url":"\/watch\?v=([a-zA-Z0-9_-]+)"[^}]+"badge":{"liveBadge":/
+                ];
                 
-                // Pattern 2: "isLive":true
-                if (!liveVideoId) {
-                    const match2 = html.match(/"videoId":"([^"]+)"[^}]+"isLive":true/);
-                    if (match2) liveVideoId = match2[1];
+                for (const pattern of patterns) {
+                    const match = html.match(pattern);
+                    if (match) return match[1];
                 }
                 
-                // Pattern 3: Cari LIVE badge di thumbnail
-                if (!liveVideoId) {
-                    const match3 = html.match(/"label":"LIVE"[^}]+"videoId":"([^"]+)"/);
-                    if (match3) liveVideoId = match3[1];
-                }
-                
-                if (liveVideoId) {
-                    // Buka popup live chat
-                    const chatUrl = `https://www.youtube.com/live_chat?v=${liveVideoId}&is_popout=1`;
-                    const popup = window.open(chatUrl, 'livechat', 'width=400,height=600,left=' + (screen.width - 420) + ',top=100');
-                    
-                    if (popup) {
-                        document.getElementById('liveStatus').innerHTML = '<span style="color:#00ff00;">🟢 LIVE! Chat di popup</span>';
-                        document.getElementById('chatLoading').innerHTML = '<div style="font-size:30px;">✅</div><div style="font-size:11px;">Live chat terbuka di popup!</div><div style="font-size:9px;color:#666;">Kalo kegedean, resize aja</div>';
-                        
-                        // Juga tampilin di iframe kalo bisa
-                        document.getElementById('chatContainer').innerHTML = `
-                            <iframe src="https://www.youtube.com/live_chat?v=${liveVideoId}&embed_domain=${window.location.hostname}" 
-                                    width="100%" height="100%" frameborder="0" allowfullscreen 
-                                    onerror="this.style.display='none'">
-                            </iframe>
-                        `;
-                        document.getElementById('chatLoading').style.display = 'none';
-                        
-                        toast('💬 Live chat terbuka!');
-                    } else {
-                        // Popup diblokir, coba iframe aja
-                        document.getElementById('chatContainer').innerHTML = `
-                            <iframe src="https://www.youtube.com/live_chat?v=${liveVideoId}" 
-                                    width="100%" height="100%" frameborder="0" allowfullscreen>
-                            </iframe>
-                        `;
-                        document.getElementById('chatLoading').style.display = 'none';
-                        document.getElementById('liveStatus').innerHTML = '<span style="color:#00ff00;">🟢 LIVE!</span>';
-                        toast('💬 Popup diblokir, chat di bawah');
-                    }
-                } else {
-                    document.getElementById('liveStatus').textContent = '⚪ Tidak live';
-                    document.getElementById('chatLoading').innerHTML = '<div style="font-size:30px;">😴</div><div style="font-size:11px;">TheMoiLee sedang tidak live</div><div style="font-size:9px;color:#666;">Cek lagi nanti ya</div>';
-                    toast('❌ Tidak ada live');
-                }
+                return null;
             } catch (e) {
-                // Fallback: buka channel langsung
-                document.getElementById('liveStatus').textContent = '⚠️ Error';
-                document.getElementById('chatLoading').innerHTML = '<div style="font-size:30px;">❌</div><div style="font-size:11px;">Gagal cek live</div><div style="font-size:9px;color:#666;">Klik untuk buka channel</div>';
-                
-                // Buka channel di tab baru
-                const channelUrl = `https://www.youtube.com/@TheMoiLee/live`;
-                window.open(channelUrl, '_blank');
-                toast('📺 Buka YouTube di tab baru');
+                return null;
             }
         }
         
+        async function loadLiveChat() {
+            const statusEl = document.getElementById('liveStatus');
+            const badgeEl = document.getElementById('liveBadge');
+            const container = document.getElementById('chatContainer');
+            
+            statusEl.textContent = '🔍 Mencari live...';
+            badgeEl.style.display = 'none';
+            
+            const videoId = await getLiveVideoId();
+            
+            if (videoId) {
+                liveVideoId = videoId;
+                statusEl.innerHTML = '<span style="color:#0f0;">🟢 LIVE!</span>';
+                badgeEl.style.display = 'inline';
+                
+                // Embed live chat langsung di iframe
+                container.innerHTML = `
+                    <iframe 
+                        src="https://www.youtube.com/live_chat?v=${videoId}&embed_domain=${window.location.hostname}"
+                        width="100%" 
+                        height="100%" 
+                        frameborder="0"
+                        allow="autoplay; encrypted-media"
+                        allowfullscreen>
+                    </iframe>
+                `;
+                
+                toast('💬 Live chat dimuat!');
+            } else {
+                statusEl.textContent = '⚪ Tidak live';
+                container.innerHTML = `
+                    <div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#a8b2d1;">
+                        <div style="font-size:40px;">😴</div>
+                        <div style="font-size:12px;margin-top:8px;">TheMoiLee tidak live</div>
+                        <div style="font-size:10px;color:#666;">Cek lagi nanti</div>
+                    </div>
+                `;
+                toast('❌ Tidak ada live');
+            }
+        }
+        
+        // ===== AUTO CHECK EVERY 1 MINUTE =====
+        setInterval(async () => {
+            const videoId = await getLiveVideoId();
+            if (videoId && videoId !== liveVideoId) {
+                document.getElementById('liveBadge').style.display = 'inline';
+                document.getElementById('liveStatus').innerHTML = '<span style="color:#0f0;">🟢 LIVE!</span>';
+                loadLiveChat();
+            }
+        }, 60000);
+        
         // ===== INIT =====
         updVol(75);
-        
-        // Auto cek live tiap 2 menit
-        setInterval(async () => {
-            try {
-                const r = await fetch(`https://www.youtube.com/@TheMoiLee`);
-                const h = await r.text();
-                if (h.includes('"label":"LIVE"') || h.includes('"isLive":true') || h.includes('"liveBadge"')) {
-                    document.getElementById('liveStatus').innerHTML = '<span style="color:#0f0;animation:blink 1s infinite">🔴 LIVE SEKARANG!</span>';
-                }
-            } catch(e) {}
-        }, 120000);
     </script>
 </body>
 </html>
