@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-🎵 BIMOLI SOUNDBOARD SERVER
+🎵 BIMOLI SOUNDBOARD SERVER - Volume Control Fix
 """
 
 import os
@@ -10,8 +10,8 @@ import threading
 import subprocess
 import platform
 import socket
-import re
 import requests
+import base64
 from datetime import datetime
 
 # Path dari launcher
@@ -30,18 +30,15 @@ IS_WINDOWS = platform.system() == "Windows"
 PORT = 5000
 VOLUME_GLOBAL = 0.75
 
-# Webhook buat IP & Status
+# Webhook IP
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060970748543097/-oxVS2Gb1ojNC-UCV43UobpgqSJUAbv_90X1rbLZvf6J6Vlj4hjgKSM-FPhEFCbufeAT"
 
 app = Flask(__name__, template_folder=os.path.join(SYSTEM_DIR, 'templates'))
 app.config['SECRET_KEY'] = 'bimoli_2024'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
-# ============================================================
-
 def send_discord(message):
-    try:
-        requests.post(WEBHOOK_URL, json={'content': message}, timeout=5)
+    try: requests.post(WEBHOOK_URL, json={'content': message}, timeout=5)
     except: pass
 
 def muat_konfigurasi():
@@ -62,22 +59,43 @@ def update_play_count(nama_file):
         simpan_konfigurasi(konfig)
     except: pass
 
-def play_with_vlc(file_path, volume=0.75):
+def play_audio(file_path, volume=0.75):
+    """
+    Play audio dengan volume control yang BENER
+    Volume: 0.0 - 1.0 (0.25 = 25%, 0.5 = 50%, 1.0 = 100%)
+    """
     try:
         if not IS_WINDOWS: return False
+        
+        # Cari VLC
+        vlc_exe = None
         for path in [r"C:\Program Files\VideoLAN\VLC\vlc.exe", r"C:\Program Files (x86)\VideoLAN\VLC\vlc.exe"]:
-            if os.path.exists(path): vlc_exe = path; break
-        if not vlc_exe: return False
-        vlc_volume = int(volume * 256)
-        subprocess.Popen([vlc_exe, '--play-and-exit', '--intf', 'dummy', '--no-video-title-show', '--qt-start-minimized', '--volume', str(vlc_volume), file_path], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
-        return True
-    except: return False
-
-def play_with_powershell(file_path, volume=0.75):
-    try:
-        if not IS_WINDOWS: return False
+            if os.path.exists(path):
+                vlc_exe = path
+                break
+        
+        if vlc_exe:
+            # VLC volume: 0 = mute, 64 = 25%, 128 = 50%, 192 = 75%, 256 = 100%
+            vlc_vol = int(volume * 256)
+            
+            cmd = [
+                vlc_exe,
+                '--play-and-exit',
+                '--intf', 'dummy',
+                '--no-video-title-show',
+                '--qt-start-minimized',
+                '--volume', str(vlc_vol),
+                '--gain', str(volume),
+                file_path
+            ]
+            
+            subprocess.Popen(cmd, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
+            return True
+        
+        # Fallback: PowerShell dengan volume control
         vol = max(0.0, min(1.0, volume))
-        ps_script = f'''Add-Type -AssemblyName presentationCore
+        ps = f'''
+Add-Type -AssemblyName presentationCore
 $player = New-Object System.Windows.Media.MediaPlayer
 $player.Open("{file_path}")
 $player.Volume = {vol}
@@ -85,22 +103,30 @@ $player.Play()
 $duration = $player.NaturalDuration.TimeSpan.TotalSeconds
 Start-Sleep -Seconds $duration
 $player.Stop()
-$player.Close()'''
-        import base64
-        encoded = base64.b64encode(ps_script.encode('utf-16le')).decode()
+$player.Close()
+'''
+        encoded = base64.b64encode(ps.encode('utf-16le')).decode()
         subprocess.Popen(['powershell', '-WindowStyle', 'Hidden', '-NoProfile', '-EncodedCommand', encoded], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=subprocess.CREATE_NO_WINDOW)
         return True
+        
     except: return False
 
 def mainkan_audio(nama_file, volume=None):
     try:
         file_path = os.path.join(FOLDER_SUARA, nama_file)
+        file_path = os.path.abspath(file_path)
         if not os.path.exists(file_path): return False
+        
         if volume is None: volume = VOLUME_GLOBAL
         volume = max(0.0, min(1.0, volume))
+        
+        print(f"▶️ {nama_file} | Volume: {volume*100:.0f}%")
+        
         threading.Thread(target=update_play_count, args=(nama_file,), daemon=True).start()
-        if play_with_vlc(file_path, volume): return True
-        if play_with_powershell(file_path, volume): return True
+        
+        if play_audio(file_path, volume): return True
+        
+        # Last resort
         os.startfile(file_path)
         return True
     except: return False
@@ -109,10 +135,12 @@ def hentikan_semua():
     if IS_WINDOWS:
         subprocess.run('taskkill /F /IM vlc.exe', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         subprocess.run('taskkill /F /IM wmplayer.exe', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        subprocess.run('taskkill /F /FI "WINDOWTITLE eq *PowerShell*"', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 def get_ip():
     try:
-        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.settimeout(0); s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close(); return ip
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM); s.settimeout(0)
+        s.connect(("8.8.8.8", 80)); ip = s.getsockname()[0]; s.close(); return ip
     except: return "127.0.0.1"
 
 # ============================================================
@@ -127,13 +155,26 @@ def handle_connect():
 def handle_play(data):
     nama_file = data.get('nama_file')
     volume = data.get('volume', VOLUME_GLOBAL)
-    if not nama_file: emit('play_response', {'status': 'error'}); return
+    
+    if not nama_file:
+        emit('play_response', {'status': 'error'})
+        return
+    
     sukses = mainkan_audio(nama_file, volume)
+    
     konfig = muat_konfigurasi()
     nama_suara = nama_file
     for s in konfig['suara']:
-        if s['nama_file'] == nama_file: nama_suara = s['nama']; break
-    emit('play_response', {'status': 'ok' if sukses else 'error', 'nama_file': nama_file, 'nama_suara': nama_suara, 'volume': volume})
+        if s['nama_file'] == nama_file:
+            nama_suara = s['nama']
+            break
+    
+    emit('play_response', {
+        'status': 'ok' if sukses else 'error',
+        'nama_file': nama_file,
+        'nama_suara': nama_suara,
+        'volume': volume
+    })
 
 @socketio.on('stop_all')
 def handle_stop():
@@ -143,13 +184,33 @@ def handle_stop():
 @socketio.on('set_volume')
 def handle_volume(data):
     global VOLUME_GLOBAL
-    try: VOLUME_GLOBAL = max(0.0, min(1.0, float(data.get('volume', 0.75)))); emit('volume_changed', {'status': 'ok', 'volume': VOLUME_GLOBAL}, broadcast=True)
+    try:
+        VOLUME_GLOBAL = max(0.0, min(1.0, float(data.get('volume', 0.75))))
+        print(f"🔊 Volume: {VOLUME_GLOBAL*100:.0f}%")
+        emit('volume_changed', {'status': 'ok', 'volume': VOLUME_GLOBAL}, broadcast=True)
+        
+        # Simpan ke config
+        konfig = muat_konfigurasi()
+        if 'pengaturan' not in konfig: konfig['pengaturan'] = {}
+        konfig['pengaturan']['volume'] = VOLUME_GLOBAL
+        simpan_konfigurasi(konfig)
     except: pass
 
 @socketio.on('get_sounds')
 def handle_get_sounds():
     konfig = muat_konfigurasi()
-    emit('sounds_list', {'status': 'ok', 'suara': konfig['suara'], 'kategori': konfig['kategori'], 'volume': VOLUME_GLOBAL})
+    
+    # Load volume dari config
+    global VOLUME_GLOBAL
+    if 'pengaturan' in konfig and 'volume' in konfig['pengaturan']:
+        VOLUME_GLOBAL = konfig['pengaturan']['volume']
+    
+    emit('sounds_list', {
+        'status': 'ok',
+        'suara': konfig['suara'],
+        'kategori': konfig['kategori'],
+        'volume': VOLUME_GLOBAL
+    })
 
 # ============================================================
 # ROUTES
@@ -170,9 +231,20 @@ def test():
 
 if __name__ == '__main__':
     print("\n🎵 BIMOLI SOUNDBOARD SERVER\n")
+    
+    # Load volume dari config
+    konfig = muat_konfigurasi()
+    if 'pengaturan' in konfig and 'volume' in konfig['pengaturan']:
+        VOLUME_GLOBAL = konfig['pengaturan']['volume']
+    
     ip = get_ip()
     send_discord(f"🟢 **Soundboard Server Aktif!**\n📱 **URL:** http://{ip}:{PORT}\n🔊 Volume: {VOLUME_GLOBAL*100:.0f}%\n⏰ {datetime.now().strftime('%H:%M:%S')}")
+    
     print(f"📱 HP: http://{ip}:{PORT}")
+    print(f"🔊 Volume default: {VOLUME_GLOBAL*100:.0f}%")
     print("🔴 Ctrl+C to stop\n")
-    if IS_WINDOWS: subprocess.run(f'netsh advfirewall firewall add rule name="Bimoli" dir=in action=allow protocol=TCP localport={PORT}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
+    if IS_WINDOWS:
+        subprocess.run(f'netsh advfirewall firewall add rule name="Bimoli" dir=in action=allow protocol=TCP localport={PORT}', shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+    
     socketio.run(app, host='0.0.0.0', port=PORT, debug=False, allow_unsafe_werkzeug=True)
