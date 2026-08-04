@@ -2,7 +2,7 @@
 """
 ╔══════════════════════════════════════════════╗
 ║     🎵 BIMOLI SOUNDBOARD MANAGER 🎵        ║
-║     YT Downloader | Auto SS | Manager       ║
+║     YT Downloader | Manager       ║
 ╚══════════════════════════════════════════════╝
 """
 
