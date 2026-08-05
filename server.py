@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 """
-🎵 BIMOLI SOUNDBOARD SERVER - Volume Control Fix
+🎵 BIMOLI SOUNDBOARD SERVER - Volume Control Fix + Server-side Live Check
 """
 
 import os
+import re
 import sys
 import json
 import threading
@@ -30,6 +31,9 @@ IS_WINDOWS = platform.system() == "Windows"
 PORT = 5000
 VOLUME_GLOBAL = 0.75
 
+# Channel YouTube yang dicek statusnya
+YT_CHANNEL_HANDLE = "@TheMoiLee"
+
 # Webhook IP
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060970748543097/-oxVS2Gb1ojNC-UCV43UobpgqSJUAbv_90X1rbLZvf6J6Vlj4hjgKSM-FPhEFCbufeAT"
 
@@ -38,6 +42,8 @@ app.config['SECRET_KEY'] = 'bimoli_2024'
 socketio = SocketIO(app, cors_allowed_origins="*", async_mode='threading')
 
 def send_discord(message):
+    if not WEBHOOK_URL:
+        return
     try: requests.post(WEBHOOK_URL, json={'content': message}, timeout=5)
     except: pass
 
@@ -144,6 +150,41 @@ def get_ip():
     except: return "127.0.0.1"
 
 # ============================================================
+# LIVE CHECK (server-side — no CORS limits, no API key needed)
+# ============================================================
+
+_YT_HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36'
+}
+
+def get_live_video_id(channel_handle=YT_CHANNEL_HANDLE):
+    """
+    Cek apakah channel lagi live dengan minta halaman /<handle>/live.
+    - Kalau live: YouTube redirect ke https://www.youtube.com/watch?v=<ID>
+      -> kita baca URL akhir setelah redirect.
+    - Kalau nggak live: halaman tetap di /live (nggak redirect ke watch?v=...)
+      -> kita coba fallback cari pola isLiveNow di HTML-nya, kalau nggak ada berarti offline.
+    Ini jalan di server jadi nggak kena CORS seperti kalau dipanggil dari browser.
+    """
+    try:
+        url = f"https://www.youtube.com/{channel_handle}/live"
+        resp = requests.get(url, headers=_YT_HEADERS, timeout=8, allow_redirects=True)
+
+        if "watch?v=" in resp.url:
+            video_id = resp.url.split("watch?v=")[1].split("&")[0]
+            return video_id
+
+        # Fallback: parse HTML kalau redirect nggak kejadian tapi tetap live
+        match = re.search(r'"videoId":"([^"]{6,20})"[^{]{0,600}"isLiveNow":true', resp.text)
+        if match:
+            return match.group(1)
+
+        return None
+    except Exception as e:
+        print(f"⚠️ Gagal cek live: {e}")
+        return None
+
+# ============================================================
 # WEBSOCKET
 # ============================================================
 
@@ -211,6 +252,22 @@ def handle_get_sounds():
         'kategori': konfig['kategori'],
         'volume': VOLUME_GLOBAL
     })
+
+@socketio.on('check_live')
+def handle_check_live():
+    """
+    Dipanggil dari frontend saat user klik 'Cek Live'.
+    Jalan di thread terpisah biar nggak nge-block koneksi socket lain
+    selagi nunggu response dari youtube.com.
+    """
+    def _cek():
+        video_id = get_live_video_id()
+        socketio.emit('live_status', {'videoId': video_id})
+        if video_id:
+            print(f"🔴 Live terdeteksi: {video_id}")
+        else:
+            print("⚪ Channel sedang tidak live")
+    threading.Thread(target=_cek, daemon=True).start()
 
 # ============================================================
 # ROUTES
