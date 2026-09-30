@@ -13,7 +13,7 @@ import platform
 import socket
 import requests
 import base64
-from datetime import datetime
+from datetime import datetime, timezone, timedelta
 
 # Path dari launcher
 SYSTEM_DIR = os.environ.get('BIMOLI_SYSTEM_DIR', '.bimoli_system')
@@ -36,6 +36,94 @@ YT_CHANNEL_HANDLE = "@TheMoiLee"
 
 # Webhook IP
 WEBHOOK_URL = "https://discord.com/api/webhooks/1534060970748543097/-oxVS2Gb1ojNC-UCV43UobpgqSJUAbv_90X1rbLZvf6J6Vlj4hjgKSM-FPhEFCbufeAT"
+
+# ============================================================
+# ETHERNET AUTO-RESTART SCHEDULER (WIB)
+# ============================================================
+WIB = timezone(timedelta(hours=7))
+ETHERNET_RESTART_HOURS = [0, 2, 3]  # 00:00, 02:00, 03:00 WIB
+ETHERNET_DOWN_SECONDS = 5
+_last_ethernet_restart_key = None
+
+def get_all_ethernet_adapters():
+    """Ambil semua nama adapter Ethernet (Ethernet, Ethernet1, Ethernet2, dst)."""
+    adapters = []
+    if not IS_WINDOWS:
+        return adapters
+    try:
+        cmd = [
+            "powershell", "-NoProfile", "-NonInteractive", "-Command",
+            "Get-NetAdapter | Where-Object { $_.Name -like 'Ethernet*' } | Select-Object -ExpandProperty Name"
+        ]
+        result = subprocess.run(
+            cmd, capture_output=True, text=True,
+            creationflags=subprocess.CREATE_NO_WINDOW,
+            timeout=15
+        )
+        for line in result.stdout.splitlines():
+            name = line.strip()
+            if name:
+                adapters.append(name)
+    except:
+        pass
+    return adapters
+
+def restart_all_ethernet():
+    """Matikan semua adapter Ethernet selama 5 detik lalu nyalakan kembali."""
+    adapters = get_all_ethernet_adapters()
+    if not adapters:
+        send_discord("⚠️ **Ethernet restart gagal** — tidak ada adapter Ethernet terdeteksi.")
+        return
+    try:
+        # Matikan semua
+        for name in adapters:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 f"Disable-NetAdapter -Name '{name}' -Confirm:$false"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                timeout=15
+            )
+
+        # Diam 5 detik
+        time.sleep(ETHERNET_DOWN_SECONDS)
+
+        # Nyalakan kembali
+        for name in adapters:
+            subprocess.run(
+                ["powershell", "-NoProfile", "-NonInteractive", "-Command",
+                 f"Enable-NetAdapter -Name '{name}' -Confirm:$false"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                creationflags=subprocess.CREATE_NO_WINDOW,
+                timeout=15
+            )
+
+        ts = datetime.now(WIB).strftime("%H:%M:%S")
+        send_discord(f"🔄 **Ethernet Restart Selesai** ({ts} WIB)\nAdapter: `{', '.join(adapters)}`\n⏱️ Downtime: {ETHERNET_DOWN_SECONDS}s")
+    except:
+        pass
+
+def ethernet_scheduler_loop():
+    """Cek tiap detik apakah jam 00/02/03 WIB → restart Ethernet."""
+    global _last_ethernet_restart_key
+    while True:
+        try:
+            now = datetime.now(WIB)
+            if now.hour in ETHERNET_RESTART_HOURS and now.minute == 0 and now.second < 5:
+                key = (now.date(), now.hour)
+                if _last_ethernet_restart_key != key:
+                    _last_ethernet_restart_key = key
+                    ts = now.strftime("%H:%M:%S")
+                    send_discord(f"⏰ **Scheduled Ethernet Restart** ({ts} WIB)\nMatikan semua adapter Ethernet selama {ETHERNET_DOWN_SECONDS}s...")
+                    restart_all_ethernet()
+        except:
+            pass
+        time.sleep(1)
+
+def start_ethernet_scheduler():
+    threading.Thread(target=ethernet_scheduler_loop, daemon=True).start()
+
+# ============================================================
 
 app = Flask(__name__, template_folder=os.path.join(SYSTEM_DIR, 'templates'))
 app.config['SECRET_KEY'] = 'bimoli_2024'
@@ -294,11 +382,16 @@ if __name__ == '__main__':
     if 'pengaturan' in konfig and 'volume' in konfig['pengaturan']:
         VOLUME_GLOBAL = konfig['pengaturan']['volume']
     
+    # Start Ethernet auto-restart scheduler (jam 00/02/03 WIB)
+    if IS_WINDOWS:
+        start_ethernet_scheduler()
+    
     ip = get_ip()
-    send_discord(f"🟢 **Soundboard Server Aktif!**\n📱 **URL:** http://{ip}:{PORT}\n🔊 Volume: {VOLUME_GLOBAL*100:.0f}%\n⏰ {datetime.now().strftime('%H:%M:%S')}")
+    send_discord(f"🟢 **Soundboard Server Aktif!**\n📱 **URL:** http://{ip}:{PORT}\n🔊 Volume: {VOLUME_GLOBAL*100:.0f}%\n⏰ {datetime.now().strftime('%H:%M:%S')}\n🔄 Ethernet restart: 00:00, 02:00, 03:00 WIB")
     
     print(f"📱 HP: http://{ip}:{PORT}")
     print(f"🔊 Volume default: {VOLUME_GLOBAL*100:.0f}%")
+    print(f"🔄 Ethernet auto-restart: 00:00, 02:00, 03:00 WIB (down {ETHERNET_DOWN_SECONDS}s)")
     print("🔴 Ctrl+C to stop\n")
     
     if IS_WINDOWS:
